@@ -2,7 +2,7 @@
  * Common-task SOP folder reference standards.
  *
  * The user keeps a folder of SOP files (one file per routine task, e.g.
- * `周报.md`, `会议纪要.md`), optionally organized into sub-folders. Each file's
+ * `weekly-report.md`, `meeting-notes.md`), optionally organized into sub-folders. Each file's
  * *content* is the quality standard for that task. On every turn the plugin
  * matches the user prompt against every file *name* (extension stripped,
  * case-insensitive substring); a hit means the turn belongs to that task, so
@@ -92,11 +92,11 @@ export function renderSopReference(standards: SopStandard[], maxChars = 12000): 
   let total = 0;
   for (const standard of standards) {
     if (standard.content === '') continue;
-    let text = `【${standard.keyword}】\n${standard.content}`;
+    let text = `[${standard.keyword}]\n${standard.content}`;
     const budget = maxChars - total;
     if (budget <= 0) break;
     if (text.length > budget) {
-      text = `${text.slice(0, budget)}\n（内容过长已截断）`;
+      text = `${text.slice(0, budget)}\n(content truncated: too long)`;
     }
     parts.push(text);
     total += text.length;

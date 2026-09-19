@@ -57,32 +57,32 @@ export interface ReviewerRoute {
 
 export class ReviewError extends Error {}
 
-const SYSTEM_PROMPT = `你是一名严格、挑剔但公正的 AI 回答质量审核员。你的工作是审核另一个 AI 助手对用户提问的最终回答。
+const SYSTEM_PROMPT = `You are a strict, critical, but fair reviewer of AI answer quality. Your job is to review the final answer another AI assistant gave to a user's question.
 
-只依据以下被开启的审核维度进行判定；每个维度都可能被关闭，关闭的维度不要评论。
+Judge only by the review aspects enabled below; any aspect may be switched off, and you must not comment on a disabled aspect.
 
-判定标准：
-- 只有当回答存在**明确的、实质性的**问题时才判不通过。风格偏好、可选的改进建议不构成不通过的理由。
-- 不确定是否属实时，按通过处理——宁可漏过，不可误伤。
-- 你的输出会被程序解析：只输出一个 JSON 对象，不要输出任何其他文字、解释或 Markdown 代码围栏。
+Decision criteria:
+- Fail an answer only when it has a **clear, substantive** problem. Stylistic preferences and optional improvements are not grounds for failure.
+- When you are unsure whether something is true, pass it — better to miss a problem than to flag an innocent answer.
+- Your output is parsed by a program: emit exactly one JSON object, with no other text, explanation, or Markdown code fence.
 
-输出格式（严格遵守）：
+Output format (strictly):
 {"pass": true}
-或
-{"pass": false, "issues": [{"aspect": "<维度名>", "problem": "<具体问题是什么>", "suggestion": "<应该如何修改>"}]}
+or
+{"pass": false, "issues": [{"aspect": "<aspect name>", "problem": "<what the concrete problem is>", "suggestion": "<how it should be fixed>"}]}
 
-issues 数组只列实质问题，每条都要具体到可以直接据此修改。`;
+The issues array lists substantive problems only, and each entry must be specific enough to act on directly.`;
 
 function enabledAspects(config: QualityReviewConfig): string[] {
   const labels: Array<[keyof QualityReviewConfig['aspects'], string, string]> = [
-    ['factualAccuracy', '事实准确性', '回答中是否有明显的事实错误、编造的引用/数据/概念'],
-    ['completeness', '回答完整性', '是否完整回答了用户提出的所有问题，有无遗漏要点'],
-    ['logicalConsistency', '逻辑一致性', '推理过程是否自相矛盾，结论是否能从论据推出'],
-    ['instructionFollowing', '指令遵循', '是否违反了用户明确提出的格式、语言、长度或其他约束'],
+    ['factualAccuracy', 'Factual accuracy', 'Whether the answer contains clear factual errors, or fabricated citations/data/concepts'],
+    ['completeness', 'Completeness', 'Whether it fully answers every part of the question the user asked, or omits key points'],
+    ['logicalConsistency', 'Logical consistency', 'Whether the reasoning contradicts itself, and whether the conclusions follow from the evidence'],
+    ['instructionFollowing', 'Instruction following', 'Whether it violated any format, language, length, or other constraint the user explicitly set'],
   ];
   return labels
     .filter(([key]) => config.aspects[key])
-    .map(([, name, desc]) => `- ${name}：${desc}`);
+    .map(([, name, desc]) => `- ${name}: ${desc}`);
 }
 
 export function renderReviewPrompt(request: ReviewRequest, config: QualityReviewConfig): string {
@@ -92,26 +92,26 @@ export function renderReviewPrompt(request: ReviewRequest, config: QualityReview
   const hasSop = sopStandards.length > 0;
   const aspects = enabledAspects(config);
   if (hasSop) {
-    aspects.push('- 是否符合 SOP 规范：回答是否遵守该任务对应的质量标准，有无遗漏、偏离或违反规范要求');
+    aspects.push('- SOP compliance: whether the answer follows the quality standard for this task, with no omissions, deviations, or violations');
   }
-  const aspectBlock = aspects.length > 0 ? aspects.join('\n') : '- 综合质量：回答是否合理、可信、有用';
+  const aspectBlock = aspects.length > 0 ? aspects.join('\n') : '- Overall quality: whether the answer is reasonable, credible, and useful';
   const sopBlock = hasSop
-    ? `\n【该任务的质量标准（SOP 规范）】\n${renderSopReference(sopStandards)}\n`
+    ? `\n[Quality standard for this task (SOP)]\n${renderSopReference(sopStandards)}\n`
     : '';
-  return `请审核以下 AI 助手的回答质量。
+  return `Review the quality of the following AI assistant answer.
 
-【开启的审核维度】
+[Enabled review aspects]
 ${aspectBlock}
 ${sopBlock}
-【用户的提问】
-${request.userPrompt.trim() === '' ? '（未能获取原文，请依据回答内容本身判断）' : request.userPrompt}
+[The user's question]
+${request.userPrompt.trim() === '' ? '(the original text was unavailable; judge by the answer itself)' : request.userPrompt}
 
-【AI 助手的回答】
+[The AI assistant's answer]
 ${request.assistantReply}
 
-【审核轮次】第 ${request.round} 轮 / 共 ${request.maxRounds} 轮${request.round > 1 ? '（该回答已根据上一轮审核意见修改过，请重点核对修改是否解决了问题）' : ''}
+[Review round] ${request.round} of ${request.maxRounds}${request.round > 1 ? ' (this answer was revised per the previous round, so check specifically whether the revision resolved the problem)' : ''}
 
-现在给出你的审核结论（只输出 JSON）：`;
+Now give your review verdict (JSON only):`;
 }
 
 /** Accumulate a dsh-llm stream into plain text. */
@@ -159,7 +159,7 @@ function normalizeIssue(value: unknown): ReviewIssue | undefined {
   const problem = typeof v.problem === 'string' ? v.problem.trim() : '';
   if (problem === '') return undefined;
   return {
-    aspect: typeof v.aspect === 'string' && v.aspect.trim() !== '' ? v.aspect.trim() : '综合',
+    aspect: typeof v.aspect === 'string' && v.aspect.trim() !== '' ? v.aspect.trim() : 'Overall',
     problem,
     suggestion: typeof v.suggestion === 'string' ? v.suggestion.trim() : '',
   };
@@ -215,13 +215,13 @@ export class Reviewer {
 export function renderFixRequest(verdict: ReviewVerdict, round: number, maxRounds: number): string {
   const items = verdict.issues
     .map((issue, index) => {
-      const suggestion = issue.suggestion === '' ? '' : `\n   修改建议：${issue.suggestion}`;
-      return `${index + 1}. 【${issue.aspect}】${issue.problem}${suggestion}`;
+      const suggestion = issue.suggestion === '' ? '' : `\n   Suggestion: ${issue.suggestion}`;
+      return `${index + 1}. [${issue.aspect}] ${issue.problem}${suggestion}`;
     })
     .join('\n');
   const tail =
     round >= maxRounds
-      ? '\n\n这是最后一次修改机会，请尽力修正；若确实无法修正某条，请简要说明原因。'
+      ? '\n\nThis is your last chance to revise: do your best to fix each point, and if something genuinely cannot be fixed, briefly explain why.'
       : '';
-  return `[质量审核] 你刚才的回答未通过审核（第 ${round}/${maxRounds} 轮），发现以下 ${verdict.issues.length} 个问题：\n\n${items}\n\n请针对上述问题修改你的回答：直接给出修正后的完整回答，不要辩解或复述审核意见。${tail}`;
+  return `[Quality review] Your previous answer failed review (round ${round}/${maxRounds}) with ${verdict.issues.length} issue(s):\n\n${items}\n\nRevise your answer to address the points above: give the corrected complete answer directly, without arguing or restating the review.${tail}`;
 }

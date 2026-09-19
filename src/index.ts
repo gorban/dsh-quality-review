@@ -104,7 +104,9 @@ function extractReviewMaterial(session: SessionLike): { userPrompt: string; assi
     if (assistantReply !== '' && message.role === 'user') {
       const text = textOf(message);
       // Skip our own steered fix requests when locating the original prompt.
-      if (text.startsWith('[质量审核]')) continue;
+      // The Chinese prefix is the pre-rename marker: sessions written before the
+      // English translation still carry it, so both must keep matching.
+      if (text.startsWith('[Quality review]') || text.startsWith('[质量审核]')) continue;
       userPrompt = text;
       break;
     }
@@ -215,8 +217,9 @@ export function apply(ctx: CordisContextLike, config: QualityReviewConfig): void
     let sopStandards: SopStandard[] = [];
     if (sopDir !== '') {
       const standards = loadSopStandards(sopDir);
-      // 命中任意一个 SOP 文件即判定为「相关任务」；SOP 可能是多个文件共同
-      // 构成一份标准，因此命中后读取文件夹内全部标准文件，而不是只读命中的。
+      // Any single matching SOP file marks the task as "relevant"; an SOP may be
+      // several files forming one standard, so a match reads every standard file
+      // in the folder rather than only the file that matched.
       const matched = matchSopStandards(userPrompt, standards);
       if (matched.length > 0) {
         const emptyNames = standards.filter((standard) => standard.content === '').map((standard) => standard.keyword);
@@ -267,7 +270,7 @@ export function apply(ctx: CordisContextLike, config: QualityReviewConfig): void
       id: randomUUID(),
       role: 'user',
       content: [{ type: 'text', text: renderFixRequest(verdict, nextRound, config.maxRounds) }],
-      source: { kind: 'plugin', plugin: 'quality-review', form: 'notice', summary: '质量审核追问' },
+      source: { kind: 'plugin', plugin: 'quality-review', form: 'notice', summary: 'Quality review follow-up' },
     });
   });
 

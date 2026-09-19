@@ -57,52 +57,52 @@ export interface QualityReviewConfig {
 const Config: Schema<QualityReviewConfig> = Schema.object({
   enabled: Schema.boolean()
     .default(true)
-    .description('总开关；关闭后插件保持加载但不做任何审核。'),
+    .description('Master switch; when off, the plugin stays loaded but performs no review.'),
   reviewer: Schema.object({
     provider: Schema.string()
       .default('')
-      .description('审核模型的 provider id；留空则复用该 agent 自己的 provider。'),
+      .description('Reviewer model provider id; leave empty to reuse the provider of this agent.'),
     model: Schema.string()
       .default('')
-      .description('审核模型 id；留空则复用该 agent 自己的模型。'),
+      .description('Reviewer model id; leave empty to reuse the model of this agent.'),
   })
     .default({})
-    .description('独立审核模型路由；默认复用会话自身模型。'),
+    .description('Independent reviewer model route; defaults to reusing the model of the session.'),
   maxRounds: Schema.natural()
     .max(5)
     .default(2)
-    .description('每个回答最多追问修改的轮数上限（防死循环），默认 2。'),
+    .description('Upper bound on revision rounds per answer (loop guard); defaults to 2.'),
   aspects: Schema.object({
-    factualAccuracy: Schema.boolean().default(true).description('事实准确性：检查明显事实错误与编造信息。'),
-    completeness: Schema.boolean().default(true).description('回答完整性：检查是否遗漏用户问题的任何部分。'),
-    logicalConsistency: Schema.boolean().default(true).description('逻辑一致性：检查推理矛盾与站不住脚的结论。'),
-    instructionFollowing: Schema.boolean().default(true).description('指令遵循：检查是否违反用户明确提出的格式、语言与约束。'),
+    factualAccuracy: Schema.boolean().default(true).description('Factual accuracy: check for clear factual errors and fabricated information.'),
+    completeness: Schema.boolean().default(true).description('Completeness: check whether any part of the user question was left unanswered.'),
+    logicalConsistency: Schema.boolean().default(true).description('Logical consistency: check for contradictory reasoning and unsupported conclusions.'),
+    instructionFollowing: Schema.boolean().default(true).description('Instruction following: check for violations of the format, language, and constraints the user explicitly set.'),
   })
     .default({})
-    .description('审核维度开关。'),
+    .description('Review aspect switches.'),
   review: Schema.object({
-    maxTokens: Schema.natural().default(2048).description('审核请求的输出 token 上限。'),
-    temperature: Schema.number().min(0).max(2).default(0.1).description('审核请求的采样温度；低温让判定更稳定。'),
-    timeoutMs: Schema.natural().default(120_000).description('审核请求超时（毫秒）。'),
+    maxTokens: Schema.natural().default(2048).description('Output token limit for review requests.'),
+    temperature: Schema.number().min(0).max(2).default(0.1).description('Sampling temperature for review requests; a low value keeps verdicts stable.'),
+    timeoutMs: Schema.natural().default(120_000).description('Review request timeout (milliseconds).'),
   })
     .default({})
-    .description('审核调用限制。'),
+    .description('Review call limits.'),
   minReplyChars: Schema.natural()
     .default(200)
-    .description('低于该字符数的简短回复不审核，避免对闲聊式回答过度反应。'),
+    .description('Replies shorter than this many characters are not reviewed, avoiding overreaction to small talk.'),
   exemptPatterns: Schema.array(Schema.string())
     .default([])
-    .description('常见任务豁免：用户提问包含任一关键词时跳过审核（用于固定 SOP 的例行任务，避免误伤）。'),
+    .description('Routine-task exemption: skip review when the user prompt contains any of these keywords (for recurring SOP tasks, to avoid false positives).'),
   sop: Schema.object({
     enabled: Schema.boolean()
       .default(true)
-      .description('启用 SOP 标准参照：从文件夹读取文件名匹配相关任务，把命中文件的内容作为该任务的质量标准注入审核。'),
+      .description('Enable SOP standards reference: read files whose names match the task from a folder and inject their content as the quality standard for that task.'),
     dir: Schema.string()
       .default('')
-      .description('SOP 文件夹路径；留空使用默认目录 DSH_HOME/quality-review/sop。'),
+      .description('SOP folder path; leave empty to use the default directory DSH_HOME/quality-review/sop.'),
   })
     .default({})
-    .description('常见任务 SOP 标准参照。'),
+    .description('Routine-task SOP standards reference.'),
 });
 
 export default Config;
