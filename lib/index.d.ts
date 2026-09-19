@@ -16,12 +16,31 @@ interface DerivedMessage {
 interface SessionLike {
     deriveMessages(): DerivedMessage[];
 }
+/**
+ * A steering message. The host requires steering content to be *identified*:
+ * replay validates that a `user/message` carries a non-empty string `id` and
+ * throws "lacks an identified message" otherwise (see `assertMessageEventShape`
+ * in packages/core/session). Declaring that shape here is what keeps the
+ * requirement enforceable — an `unknown` parameter let the id-less literal
+ * below compile, and the session only failed later, on the next replay.
+ */
+interface SteerMessage {
+    id: string;
+    role: string;
+    content: ContentBlock[];
+    source: {
+        kind: string;
+        plugin: string;
+        form: string;
+        summary: string;
+    };
+}
 interface AgentLike {
     id: string;
     session: SessionLike;
     provider?: string;
     model?: string;
-    steer(message: unknown): void;
+    steer(message: SteerMessage): void;
 }
 interface CordisContextLike {
     llm: LlmStreamLike;

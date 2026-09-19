@@ -14,6 +14,7 @@
  * turn allows at most `maxRounds` steered follow-ups (default 2), which is
  * the hard loop guard.
  */
+import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import Config from './config.js';
 import type { QualityReviewConfig } from './config.js';
@@ -40,12 +41,27 @@ interface SessionLike {
   deriveMessages(): DerivedMessage[];
 }
 
+/**
+ * A steering message. The host requires steering content to be *identified*:
+ * replay validates that a `user/message` carries a non-empty string `id` and
+ * throws "lacks an identified message" otherwise (see `assertMessageEventShape`
+ * in packages/core/session). Declaring that shape here is what keeps the
+ * requirement enforceable — an `unknown` parameter let the id-less literal
+ * below compile, and the session only failed later, on the next replay.
+ */
+interface SteerMessage {
+  id: string;
+  role: string;
+  content: ContentBlock[];
+  source: { kind: string; plugin: string; form: string; summary: string };
+}
+
 interface AgentLike {
   id: string;
   session: SessionLike;
   provider?: string;
   model?: string;
-  steer(message: unknown): void;
+  steer(message: SteerMessage): void;
 }
 
 interface CordisContextLike {
@@ -248,6 +264,7 @@ export function apply(ctx: CordisContextLike, config: QualityReviewConfig): void
     );
 
     agent.steer({
+      id: randomUUID(),
       role: 'user',
       content: [{ type: 'text', text: renderFixRequest(verdict, nextRound, config.maxRounds) }],
       source: { kind: 'plugin', plugin: 'quality-review', form: 'notice', summary: '质量审核追问' },
